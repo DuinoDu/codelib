@@ -13,8 +13,8 @@ Forgive me for using Chinese.
 - 针对不同的问题，提供不同的接口操作。比如分类，可能只针对输入图像操作，目标检测还需要对2组坐标处理，显著性可能要定义各种groundtruth的形式。
 - 所有的代码，均要通过测试。
 - 每一类操作的接口，都必须相同。如果不同，有以下两种可能：
- - 它是其他类型的操作。
- - 它应该定义在`dataset`。
+    - 它是其他类型的操作。
+    - 它应该定义在`dataset`。
 
 一个合理的写`augmentation`的流程是：
 1. 针对具体的数据集形式，写`dataset`类，留好`transforms`和`target_transforms`接口。
