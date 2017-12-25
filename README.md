@@ -6,6 +6,7 @@
 Forgive me for using Chinese.
 
 ### dataset
+TODO
 
 ### augmentation
 - 统一使用Compose组合所有的操作，方便使用。
@@ -22,3 +23,15 @@ Forgive me for using Chinese.
 3. 在`augmentation.py`中写各个操作的接口定义。
 4. 用`gen-test`生成测试脚本，写测试脚本。
 5. 实现`augmentation.py`中的各个操作，并通过测试。
+
+# model
+- 网络的核心部分，从`nn.Module`派生。
+- 负责如下事情：
+    - 模型的定义
+    - 模型参数初始化
+    - 加载预训练参数（如有必要）
+    - 分两种状态：train/test。具体来说，train状态下，网络的输出要方便loss的计算，网络的输出就是loss计算的输入。test状态下，网络的输出就是模型的预测结果。需要在网络的输出部分，区分两种状态。
+    - 如果basenet使用预训练模型，basenet部分的定义参照`torchvision.models`的定义方法，这样可以方便加载预训练模型。
+
+一个合理的写`model`的流程是：
+TODO
