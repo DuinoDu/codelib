@@ -24,7 +24,7 @@ TODO
 4. 用`gen-test`生成测试脚本，写测试脚本。
 5. 实现`augmentation.py`中的各个操作，并通过测试。
 
-# model
+### model
 - 网络的核心部分，从`nn.Module`派生。
 - 负责如下事情：
     - 模型的定义
@@ -37,9 +37,9 @@ TODO
 
 TODO
 
-# loss
+### loss
 TODO
 
-# criterion
+### criterion
 TODO
 
