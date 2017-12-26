@@ -34,4 +34,12 @@ TODO
     - 如果basenet使用预训练模型，basenet部分的定义参照`torchvision.models`的定义方法，这样可以方便加载预训练模型。
 
 一个合理的写`model`的流程是：
+
 TODO
+
+# loss
+TODO
+
+# criterion
+TODO
+

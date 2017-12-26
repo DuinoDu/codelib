@@ -110,9 +110,11 @@ class GenerateHeatmap(object):
             # use min(box_w, box_h)
             size = min(xmax-xmin, ymax-ymin)
             region = self.fn(size)
-            if ymax-ymin < xmax-xmin:
-                gt[ymin:ymax, ymin:ymax] = region
+            X = xmax - xmin
+            Y = ymax - ymin
+            if X > Y:
+                gt[ymin:ymax, xmin:xmin+Y] = region
             else: 
-                gt[xmin:xmax, xmin:xmax] = region
+                gt[ymin:ymin+X, xmin:xmax] = region
 
         return im, Image.fromarray(gt, mode='F')
