@@ -12,14 +12,32 @@ import numpy as np
 from PIL import Image
 from torchvision import transforms as T
 import warnings
+import random
 
 def _is_pil_image(im):
     return isinstance(im, Image.Image)
+
+def unnormalize(tensor, mean, std):
+    if not (torch.is_tensor(img) and img.ndimension() == 3):
+        raise TypeError('tensor is not a torch image.')
+    for t, m, s in zip(tensor, mean, std):
+        t.mul_(s).add_(m)
+    return tensor
+        
+
 
 ##################
 # classification #
 ##################
 
+class Augmentation(object):
+    def __init__(self, means=()):
+        self.transforms = [
+                ]
+    def __call__(self, im):
+        for t in self.transforms:
+            im = t(im)
+        return im
 
 
 #####################
@@ -27,42 +45,83 @@ def _is_pil_image(im):
 #####################
 
 
-
 ################
 # segmentation #
 ################
 
 class ToTensor(object):
-    def __init__():
+    def __init__(self):
         self.t = T.ToTensor()
-    def __call__(self, im, gt):
-        return self.t(im), self.t(gt)
+    def __call__(self, im, gt=None):
+        if gt != None:
+            if gt.mode == 'F' and np.max(np.array(gt)) <= 1.0:
+                gt_tensor = torch.FloatTensor(np.array(gt, dtype=np.float32))
+            else:
+                gt_tensor = self.t(gt)
+        else:
+            gt_tensor = None
+        return self.t(im), gt_tensor 
 
 class Resize(object):
     def __init__(self, size, interpolation=Image.BILINEAR):
-        self.t = transfroms.Resize(size, interpolation)
-    def __call__(self, im, gt):
+        self.t = T.Resize(size, interpolation)
+    def __call__(self, im, gt=None):
         return self.t(im), self.t(gt)
 
+class Fixsize(object):
+    def __init__(self, size):
+        self.size = (size, size)
+    def __call__(self, im, gt=None):
+        im_bg = Image.new(im.mode, self.size)
+        factor = max(im.size) / self.size[0] 
+        w_new = int(im.size[0] / factor)
+        h_new = int(im.size[1] / factor)
+        im = im.resize((w_new, h_new))
+        
+        origin_x = origin_y = 0
+        if w_new > h_new:
+            origin_y = int((self.size[1] - h_new)/2)
+        else:
+            origin_x = int((self.size[0] - w_new)/2)
+        im_bg.paste(im, (origin_x, origin_y, origin_x + w_new, origin_y + h_new))
+
+        gt_bg = None
+        if gt != None:
+            gt_bg = Image.new(gt.mode, self.size)
+            gt = gt.resize((w_new, h_new))
+            gt_bg.paste(gt, (origin_x, origin_y, origin_x + w_new, origin_y + h_new))
+
+        return im_bg, gt_bg
+
+class Normalize(object):
+    def __init__(self, mean, std):
+        self.t = T.Normalize(mean, std)
+        pass
+    def __call__(self, im, gt=None):
+        return self.t(im), gt
+
 class RandomHorizontalFlip(object):
-    def __call__(self, im, gt):
+    def __call__(self, im, gt=None):
         if not _is_pil_image(im):
             raise TypeError('image should be PIL Image. Got {}'.format(type(im)))
-        if not _is_pil_image(gt):
+        if gt != None and not _is_pil_image(gt):
             raise TypeError('gt should be PIL Image. Got {}'.format(type(gt)))
         if random.random() < 0.5:
             im = im.transpose(Image.FLIP_LEFT_RIGHT) 
-            gt = gt.transpose(Image.FLIP_LEFT_RIGHT) 
+            if gt != None:
+                gt = gt.transpose(Image.FLIP_LEFT_RIGHT) 
         return im, gt
 
 class SemContextAugmentation(object):
-    def __init__(transfroms):
+    def __init__(self):
         self.transforms = [
+                Fixsize(300),
                 RandomHorizontalFlip(),
-                Resize(300),
                 ToTensor(),
-                ]
-    def __call__(self, im, gt):
+                Normalize(mean=[0.485, 0.456, 0.406],
+                          std=[0.229, 0.224, 0.225])]
+
+    def __call__(self, im, gt=None):
         for t in self.transforms:
             im, gt = t(im, gt)
         return im, gt
