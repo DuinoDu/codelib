@@ -5,10 +5,10 @@
 
 Forgive me for using Chinese.
 
-### dataset
+## dataset
 TODO
 
-### augmentation
+## augmentation
 - 统一使用Compose组合所有的操作，方便使用。
 - 同时提供train和test两种接口（因为像`RandomHorizontalFlip`这样的操作，在推断的时候，不需要使用）。
 - 针对不同的问题，提供不同的接口操作。比如分类，可能只针对输入图像操作，目标检测还需要对2组坐标处理，显著性可能要定义各种groundtruth的形式。
@@ -24,7 +24,7 @@ TODO
 4. 用`gen-test`生成测试脚本，写测试脚本。
 5. 实现`augmentation.py`中的各个操作，并通过测试。
 
-### model
+## model
 - 网络的核心部分，从`nn.Module`派生。
 - 负责如下事情：
     - 模型的定义
@@ -37,9 +37,9 @@ TODO
 
 TODO
 
-### loss
+## loss
 TODO
 
-### criterion
+## criterion
 TODO
 
