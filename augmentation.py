@@ -112,6 +112,18 @@ class RandomHorizontalFlip(object):
                 gt = gt.transpose(Image.FLIP_LEFT_RIGHT) 
         return im, gt
 
+class VOCSegAugmentation(object):
+    def __init__(self, size=300):
+        self.transforms = [
+                Resize(size),
+                RandomHorizontalFlip(),
+                ToTensor(),
+                ]
+    def __call__(self, im, gt):
+        for t in self.transforms:
+            im, gt = t(im, gt)
+        return im, gt
+
 class SemContextAugmentation(object):
     def __init__(self):
         self.transforms = [
