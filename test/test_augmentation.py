@@ -14,10 +14,12 @@ from matplotlib import pyplot as plt
 
 class Tester(unittest.TestCase):
 
+    @unittest.skip("tested")
     def test_Augmentation(self):
         augment = Augmentation()
         pass
 
+    @unittest.skip("tested")
     def test_ToTensor(self):
         im = Image.open('img/test.jpg') 
         bboxes = [[10, 10, 60, 30], [50,50, 100,100]]
@@ -26,6 +28,7 @@ class Tester(unittest.TestCase):
         y, yy = f(im, gt) 
         assert isinstance(y, torch.Tensor) and isinstance(yy, torch.Tensor)
 
+    @unittest.skip("tested")
     def test_Resize(self):
         x = Image.open('img/test.jpg')
         f = Resize(100)
@@ -35,9 +38,10 @@ class Tester(unittest.TestCase):
         plt.imshow(x)
         plt.subplot(122)
         plt.imshow(y)
-        plt.title('Resize')
-        #plt.show()
+        plt.suptitle('Resize')
+        plt.show()
 
+    @unittest.skip("tested")
     def test_Fixsize(self):
         x = Image.open('img/test.jpg')
         f = Fixsize(120)
@@ -47,7 +51,7 @@ class Tester(unittest.TestCase):
         plt.imshow(x)
         plt.subplot(222)
         plt.imshow(y)
-        plt.title('Fixsize')
+        plt.suptitle('Fixsize')
 
         x = x.transpose(Image.ROTATE_90)
         y, yy = f(x, x)
@@ -56,9 +60,10 @@ class Tester(unittest.TestCase):
         plt.imshow(x)
         plt.subplot(224)
         plt.imshow(y)
-        plt.title('Fixsize')
+        plt.suptitle('Fixsize')
         plt.show()
 
+    @unittest.skip("tested")
     def test_Normalize(self):
         x = Image.new('RGB', (600,600))
         f1 = ToTensor()
@@ -66,6 +71,7 @@ class Tester(unittest.TestCase):
         x, xx = f1(x, x)
         y, yy = f2(x, x)
 
+    @unittest.skip("tested")
     def test_RandomHorizontalFlip(self):
         x = Image.open('img/test.jpg')
         f = RandomHorizontalFlip()
@@ -74,15 +80,17 @@ class Tester(unittest.TestCase):
         plt.imshow(x)
         plt.subplot(122)
         plt.imshow(y)
-        plt.title('Random Horizontal Flip')
-        #plt.show()
+        plt.suptitle('Random Horizontal Flip')
+        plt.show()
 
+    @unittest.skip("tested")
     def test_SemContextAugmentation(self):
         x = Image.open('img/test.jpg')
         f = SemContextAugmentation()
         y = f(x)[0]
         print("tensor size:", y.size())
 
+    @unittest.skip("tested")
     def test_GenerateHeatmap(self):
         im = Image.open('img/test.jpg') 
         bboxes = [[10, 10, 60, 30], [50,50, 100,100]]
@@ -96,11 +104,49 @@ class Tester(unittest.TestCase):
         gt2 = np.concatenate((gt, gt, gt), axis=2)
         plt.subplot(121)
         plt.imshow(gt2)
-        plt.title('Generate gaussian')
-        #plt.show()
+        plt.suptitle('Generate gaussian')
+        plt.show()
 
+    @unittest.skip("tested")
     def test__is_pil_image(self):
         pass
+
+    def test_unnormalize(self):
+        # ndim = 3
+        im = Image.open('img/test.jpg') 
+        f1 = ToTensor()
+        f2 = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]) 
+        y = f2(f1(im)[0])[0].numpy().astype(float)
+        
+        maxmin_scaler = lambda x : 255 * (x - np.min(x)) / (np.max(x) - np.min(x))
+        z = unnormalize(y)
+        z = maxmin_scaler(z).astype(np.uint8)
+        z = np.transpose(z, (1,2,0))
+
+        plt.subplot(121)
+        plt.imshow(np.array(im))
+        plt.subplot(122)
+        plt.imshow(z)
+        plt.suptitle('unnormalize, ndim=3')
+        plt.show()
+
+        # ndim = 4
+        im = Image.open('img/test.jpg') 
+        f1 = ToTensor()
+        f2 = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]) 
+        y = f2(f1(im)[0])[0].unsqueeze(0).numpy().astype(float)
+        
+        maxmin_scaler = lambda x : 255 * (x - np.min(x)) / (np.max(x) - np.min(x))
+        z = unnormalize(y)[0]
+        z = maxmin_scaler(z).astype(np.uint8)
+        z = np.transpose(z, (1,2,0))
+
+        plt.subplot(121)
+        plt.imshow(np.array(im))
+        plt.subplot(122)
+        plt.imshow(z)
+        plt.suptitle('unnormalize, ndim=4')
+        plt.show()
 
 if __name__ == "__main__":
     unittest.main()

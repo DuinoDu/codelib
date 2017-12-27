@@ -14,16 +14,64 @@ from torchvision import transforms as T
 import warnings
 import random
 
+
+"""
+Some most-used points:
+1. PIL mode:
+    l:      1-bit per pixel
+    L:      8-bit per pixel
+    P:      palette encoding
+    RGB:    red-green-blue color, 3 bytes per pixel
+    "I":    32-bit int pixels
+    "F":    32-bit float pixels
+    RGBA:   plus A [0,255], 4 bytes per pixel
+    CMYK/YCbCr
+
+"""
+
+
 def _is_pil_image(im):
     return isinstance(im, Image.Image)
 
-def unnormalize(tensor, mean, std):
-    if not (torch.is_tensor(img) and img.ndimension() == 3):
-        raise TypeError('tensor is not a torch image.')
-    for t, m, s in zip(tensor, mean, std):
-        t.mul_(s).add_(m)
-    return tensor
-        
+def unnormalize(x, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]):
+    is_tensor = False
+    if isinstance(x, torch.Tensor):
+        x = x.numpy()
+        is_tensor = True
+
+    if not isinstance(x, np.ndarray):
+        raise TypeError('input x is not a numpy.ndarray or torch.Tensor.')
+
+    if x.ndim == 4:
+        for i in range(x.shape[0]):
+            x[i] = unnormalize(x[i], mean, std)
+    elif x.ndim ==3:
+        if x.shape[0] != len(mean):
+            raise ValueError('input should have same channels. x is %d, mean is %d' %v(x.shape[0], len(mean)))
+        for i in range(x.shape[0]):
+            x[i] = x[i] * std[i] + mean[i]
+
+    ret = torch.FloatTensor(x) if is_tensor else x
+    return ret
+
+def to_pil(tensor, mode):
+    """Convert a tensor to PIL Image.
+
+    Args:
+        tensor (Tensor): Image to be converted to PIL Image.
+        mode (`PIL.Image mode`_): color space and pixel depth of input data (optional).
+
+    .. _PIL.Image mode: http://pillow.readthedocs.io/en/3.4.x/handbook/concepts.html#modes
+
+    Returns:
+        PIL Image: Image converted to PIL Image.
+    """
+    if not isinstance(tensor, torch.Tensor):
+        raise TypeError('tensor should be Tensor. Got {}.'.format(type(tensor)))
+
+    tensor = tensor.mul(255).byte()
+    npimg = np.transpose(tensor.numpy(), (1, 2, 0))
+    return Image.fromarray(npimg, mode=mode)
 
 
 ##################
