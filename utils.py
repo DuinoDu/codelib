@@ -69,6 +69,8 @@ def merge(input, mode='CHW'):
         if isinstance(arr, torch.Tensor):
             arr = arr.numpy()
             using_tensor = True
+        if arr.ndim == 2:
+            arr = np.array([arr])
         if arr.shape[0] == 1:
             arr = np.concatenate((arr, arr, arr), axis=0)
         assert arr.shape[0] == 3, "Unknown channel nums: {}".format(arr.shape[0])

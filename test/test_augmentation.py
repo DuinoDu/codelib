@@ -90,11 +90,10 @@ class Tester(unittest.TestCase):
         y = f(x)[0]
         print("tensor size:", y.size())
 
-    @unittest.skip("tested")
     def test_GenerateHeatmap(self):
         im = Image.open('img/test.jpg') 
-        bboxes = [[10, 10, 60, 30], [50,50, 100,100]]
-        im, gt = GenerateHeatmap()(im, bboxes)
+        bboxes = [[10, 10, 60, 30]]
+        im, gt = GenerateHeatmap(size=100, scale=2)(im, bboxes)
         plt.subplot(121)
         plt.imshow(im)
         # show gt
@@ -102,7 +101,7 @@ class Tester(unittest.TestCase):
         gt = (gt * 255).astype(np.uint8)
         gt = gt[:,:,np.newaxis]
         gt2 = np.concatenate((gt, gt, gt), axis=2)
-        plt.subplot(121)
+        plt.subplot(122)
         plt.imshow(gt2)
         plt.suptitle('Generate gaussian')
         plt.show()
@@ -111,6 +110,7 @@ class Tester(unittest.TestCase):
     def test__is_pil_image(self):
         pass
 
+    @unittest.skip("tested")
     def test_unnormalize(self):
         # ndim = 3
         im = Image.open('img/test.jpg') 

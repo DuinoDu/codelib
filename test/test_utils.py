@@ -45,6 +45,7 @@ class Tester(unittest.TestCase):
         y = torch.rand((1, 1, x.shape[2], x.shape[3])).numpy()
         y_pred = torch.rand((1, 1, x.shape[2], x.shape[3])).numpy() 
         merged = merge([x, y, x, y_pred], 'HWC')
+        __import__('ipdb').set_trace()
         plt.imshow(merged)
         plt.suptitle('merge')
         plt.show()

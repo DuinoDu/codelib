@@ -175,7 +175,7 @@ class VOCSegAugmentation(object):
 class SemContextAugmentation(object):
     def __init__(self):
         self.transforms = [
-                Fixsize(300),
+                Fixsize(512),
                 RandomHorizontalFlip(),
                 ToTensor(),
                 Normalize(mean=[0.485, 0.456, 0.406],
@@ -195,8 +195,10 @@ class GenerateHeatmap(object):
     """
     Generate heatmap given heatmap types, such as gaussian.
     """
-    def __init__(self, heatmap_type='gaussian'):
+    def __init__(self, heatmap_type='gaussian', scale=1, size=None):
         self.fn = self._makeGaussian
+        self.scale = scale
+        self.size = size
 
     def _makeGaussian(self, size, center=None, fwhm=None):
         """
@@ -221,19 +223,36 @@ class GenerateHeatmap(object):
             y0 = int((bbox[1] + bbox[3])/2)
             box_w = bbox[2]-bbox[0]
             box_h = bbox[3]-bbox[1]
-            xmin = max(0, x0 - box_w)
-            ymin = max(0, y0 - box_h)
-            xmax = min(w, x0 + box_w)
-            ymax = min(h, y0 + box_h)
 
-            # use min(box_w, box_h)
-            size = min(xmax-xmin, ymax-ymin)
-            region = self.fn(size)
-            X = xmax - xmin
-            Y = ymax - ymin
-            if X > Y:
-                gt[ymin:ymax, xmin:xmin+Y] = region
-            else: 
-                gt[ymin:ymin+X, xmin:xmax] = region
+            if self.size == None:
+                # use max(box_w, box_h)
+                self.size = max(box_w, box_h)
+            self.size *= self.scale
+            region = self.fn(self.size)
+
+            # pos for region in gt
+            r_xmin = r_ymin = 0
+            r_xmax = r_ymax = self.size
+            r_center = int(self.size / 2)
+            x_offset = x0 - r_center
+            y_offset = y0 - r_center
+            r_xmin += x_offset
+            r_xmax += x_offset
+            r_ymin += y_offset
+            r_ymax += y_offset
+            
+            # pos in gt
+            gt_xmin = max(0, r_xmin)
+            gt_ymin = max(0, r_ymin)
+            gt_xmax = min(w, r_xmax)
+            gt_ymax = min(h, r_ymax)
+
+            # pos in region
+            rr_xmin = gt_xmin - r_xmin
+            rr_ymin = gt_ymin - r_ymin
+            rr_xmax = gt_xmax - r_xmax + self.size
+            rr_ymax = gt_ymax - r_ymax + self.size
+
+            gt[gt_ymin:gt_ymax, gt_xmin:gt_xmax] = region[rr_ymin:rr_ymax, rr_xmin:rr_xmax]
 
         return im, Image.fromarray(gt, mode='F')
