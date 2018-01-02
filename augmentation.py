@@ -104,22 +104,6 @@ class Augmentation(object):
 # segmentation #
 ################
 
-class ToTensor(object):
-    def __init__(self):
-
-        self.t = T.ToTensor()
-
-    def __call__(self, im, gt=None):
-        if gt is not None:
-            if gt.mode == 'F' and np.max(np.array(gt)) <= 1.0:
-                gt_tensor = torch.FloatTensor(np.array(gt, dtype=np.float32))
-            else:
-                gt_tensor = self.t(gt)
-        else:
-            gt_tensor = None
-        return self.t(im), gt_tensor
-
-
 class Resize(object):
     def __init__(self, size, interpolation=Image.BILINEAR):
 
@@ -134,7 +118,7 @@ class Fixsize(object):
 
         self.size = (size, size)
 
-    def __call__(self, im, gt=None):
+    def _fixsize_PIL(self, im, gt):
         im_bg = Image.new(im.mode, self.size)
         factor = max(im.size) / self.size[0]
         w_new = int(im.size[0] / factor)
@@ -155,15 +139,40 @@ class Fixsize(object):
 
         return im_bg, gt_bg
 
+    def _fixsize_tensor(self, im, gt):
+        im_bg = torch.zeros((im.size(0), self.size[0], self.size[1]))
+        factor = max(im.size(1), im.size(2)) / self.size[0]
+        h_new = int(im.size(1) / factor)
+        w_new = int(im.size(2) / factor)
 
-class Normalize(object):
-    def __init__(self, mean, std):
+        resize = lambda x : torch.nn.functional.upsample(x.unsqueeze_(0), \
+                                size=(h_new, w_new), mode='bilinear').data.squeeze_(0)
+        origin_x = origin_y = 0
+        if w_new > h_new:
+            origin_y = int((self.size[0] - h_new)/2)
+        else:
+            origin_x = int((self.size[1] - w_new)/2)
 
-        self.t = T.Normalize(mean, std)
-        pass
+        im = resize(im)
+        im_bg[:, origin_y:origin_y+h_new, origin_x:origin_x+w_new] = im 
+
+        gt_bg = None
+        if gt is not None:
+            gt_bg = torch.zeros((self.size[0], self.size[1]))
+            gt = resize(gt.unsqueeze_(0)).squeeze_(0)
+            gt_bg[origin_y:origin_y+h_new, origin_x:origin_x+w_new] = gt 
+
+        return im_bg, gt_bg
+
 
     def __call__(self, im, gt=None):
-        return self.t(im), gt
+
+        if isinstance(im, torch.Tensor):
+            # im: [3, h, w]
+            # gt: [h, w]
+            return self._fixsize_tensor(im, gt)
+        else:
+            return self._fixsize_PIL(im, gt)
 
 
 class RandomHorizontalFlip(object):
@@ -178,6 +187,32 @@ class RandomHorizontalFlip(object):
             if gt is not None:
                 gt = gt.transpose(Image.FLIP_LEFT_RIGHT)
         return im, gt
+
+
+class ToTensor(object):
+    def __init__(self):
+
+        self.t = T.ToTensor()
+
+    def __call__(self, im, gt=None):
+        if gt is not None:
+            if gt.mode == 'F' and np.max(np.array(gt)) <= 1.0:
+                gt_tensor = torch.FloatTensor(np.array(gt, dtype=np.float32))
+            else:
+                gt_tensor = self.t(gt)
+        else:
+            gt_tensor = None
+        return self.t(im), gt_tensor
+
+
+class Normalize(object):
+    def __init__(self, mean, std):
+
+        self.t = T.Normalize(mean, std)
+        pass
+
+    def __call__(self, im, gt=None):
+        return self.t(im), gt
 
 
 class VOCSegAugmentation(object):
@@ -215,35 +250,40 @@ class SemContextAugmentation(object):
 # predict pos #
 ###############
 
-
-# not tested, not completed!!
 class Resize_pos(object):
+    """Resize image and centers 
+
+        centers (dict): {'cls1':[[], [],..], 'cls2':[[], []..]}
+                                 [cx, cy]
+    """
     def __init__(self, size, interpolation=Image.BILINEAR):
 
         self.t = T.Resize(size, interpolation)
 
     def __call__(self, im, centers=None):
+        # resize image
         im_r = self.t(im)
+        # resize centers
         if centers is not None:
             if not isinstance(centers, dict):
                 raise ValueError("centers should be dict, but get {}".format(type(centers)))
-            factor = im.width / im_r.width
+            factor = im_r.width / im.width
             for key in centers.keys():
                 for ind, c in enumerate(centers[key]):
-                    pass
+                    centers[key][ind][0] = int(centers[key][ind][0] * factor)
+                    centers[key][ind][1] = int(centers[key][ind][1] * factor)
+        return im_r, centers
 
-
-
-        return 
 
 class GenerateHeatmap(object):
     """
     Generate heatmap given heatmap types, such as gaussian.
     """
-    def __init__(self, heatmap_type='gaussian', scale=1, size=None):
+    def __init__(self, heatmap_type='gaussian', scale=1, size=100):
         self.fn = self._makeGaussian
         self.scale = scale
         self.size = size
+
 
     def _makeGaussian(self, size, center=None, fwhm=None):
         """
@@ -260,18 +300,20 @@ class GenerateHeatmap(object):
         y = x[:, np.newaxis]
         return np.exp(-4*np.log(2) * ((x-x0)**2 + (y-y0)**2) / fwhm ** 2)
 
-    def __call__(self, im, bboxes):
+
+    def __call__(self, im, centers):
         w, h = im.size
         gt = np.zeros((h, w), np.float32)
-        for bbox in bboxes:
-            x0 = int((bbox[0] + bbox[2])/2)
-            y0 = int((bbox[1] + bbox[3])/2)
-            box_w = bbox[2]-bbox[0]
-            box_h = bbox[3]-bbox[1]
 
-            if self.size is None:
-                # use max(box_w, box_h)
-                self.size = max(box_w, box_h)
+        # change dict to list
+        centers_list = [] 
+        for v in centers.values():
+            centers_list += v
+
+        for c in centers_list:
+            x0 = c[0] 
+            y0 = c[1]
+
             self.size *= self.scale
             region = self.fn(self.size)
 
@@ -301,3 +343,49 @@ class GenerateHeatmap(object):
             gt[gt_ymin:gt_ymax, gt_xmin:gt_xmax] = region[rr_ymin:rr_ymax, rr_xmin:rr_xmax]
 
         return im, Image.fromarray(gt, mode='F')
+
+
+class Fixsize_pos(object):
+    def __init__(self, size):
+
+        self.size = (size, size)
+
+    def __call__(self, im, centers=None):
+        im_bg = Image.new(im.mode, self.size)
+        factor = max(im.size) / self.size[0]
+        w_new = int(im.size[0] / factor)
+        h_new = int(im.size[1] / factor)
+        im = im.resize((w_new, h_new))
+        origin_x = origin_y = 0
+        if w_new > h_new:
+            origin_y = int((self.size[1] - h_new)/2)
+        else:
+            origin_x = int((self.size[0] - w_new)/2)
+        im_bg.paste(im, (origin_x, origin_y, origin_x + w_new, origin_y + h_new))
+
+        if centers is not None:
+            for key in centers.keys():
+                for ind, c in enumerate(centers[key]):
+                    centers[key][ind][0] = int(centers[key][ind][0] / factor) + origin_x
+                    centers[key][ind][1] = int(centers[key][ind][1] / factor) + origin_y
+
+        return im_bg, centers 
+
+
+class PPAugmentation(object):
+    def __init__(self):
+
+        self.transforms = [
+                Resize_pos(256),
+                #RandomHorizontalFlip_pos(), # not implemented
+                GenerateHeatmap(heatmap_type='gaussian', size=150), # Image, dict -> Image, Image
+                ToTensor(),
+                Normalize(mean=[0.485, 0.456, 0.406],
+                          std=[0.229, 0.224, 0.225]),
+                Fixsize(256),
+                ]
+
+    def __call__(self, im, gt=None):
+        for t in self.transforms:
+            im, gt = t(im, gt)
+        return im, gt

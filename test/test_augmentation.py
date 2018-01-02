@@ -12,6 +12,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from augmentation import *
 from matplotlib import pyplot as plt
 
+
 class Tester(unittest.TestCase):
 
     @unittest.skip("tested")
@@ -90,10 +91,11 @@ class Tester(unittest.TestCase):
         y = f(x)[0]
         print("tensor size:", y.size())
 
+    @unittest.skip("tested")
     def test_GenerateHeatmap(self):
         im = Image.open('img/test.jpg') 
-        bboxes = [[10, 10, 60, 30]]
-        im, gt = GenerateHeatmap(size=100, scale=2)(im, bboxes)
+        bboxes = [[60, 30]]
+        im, gt = GenerateHeatmap(size=200, scale=2)(im, bboxes)
         plt.subplot(121)
         plt.imshow(im)
         # show gt
@@ -147,6 +149,60 @@ class Tester(unittest.TestCase):
         plt.imshow(z)
         plt.suptitle('unnormalize, ndim=4')
         plt.show()
+
+    @unittest.skip("tested")
+    def test_Resize_pos(self):
+        im = Image.open('img/test.jpg') 
+        centers = {'cls1': [[60, 30]]}
+        print('old centers:', centers)
+
+        im2, centers2 = Resize_pos(100)(im, centers)
+        print('new centers:', centers2)
+        plt.subplot(121)
+        plt.imshow(np.array(im))
+        plt.subplot(122)
+        plt.imshow(np.array(im2))
+        plt.suptitle('Resize')
+        plt.show()
+
+    @unittest.skip("tested")
+    def test_Fixsize_pos(self):
+        im = Image.open('img/test.jpg') 
+        centers = {'cls1': [[60, 30]]}
+        print('old centers:', centers)
+
+        im2, centers2 = Fixsize_pos(400)(im, centers)
+        print('new centers:', centers2)
+        plt.subplot(121)
+        plt.imshow(np.array(im))
+        plt.subplot(122)
+        plt.imshow(np.array(im2))
+        plt.suptitle('Fixsize')
+        plt.show()
+        pass
+
+
+    def test_PPAugmentation(self):
+        im = Image.open('img/test.jpg')
+        gt = {'cls1': [[60, 30], [100, 40]]}
+        f = PPAugmentation()
+        x, y_target = f(im, gt)
+        
+        if isinstance(x, torch.Tensor):
+            x = unnormalize(x)
+            x = x.mul_(255).numpy().astype(np.uint8)
+            x = np.transpose(x, (1,2,0))
+            y_target = y_target.mul_(255).numpy().astype(np.uint8)
+
+        plt.subplot(131)
+        plt.imshow(np.array(im))
+        plt.subplot(132)
+        plt.imshow(np.array(x))
+        plt.subplot(133)
+        plt.imshow(np.array(y_target))
+        plt.suptitle('PPAugmentation')
+        plt.show()
+
 
 if __name__ == "__main__":
     unittest.main()
