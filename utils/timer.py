@@ -59,7 +59,7 @@ class Timer(object):
         return int(round(input*1000))
 
 
-    def log(self, show=True):
+    def log(self, show=True, average=True):
         time_sum = self.endpoint - self.startpoint
         print('Running for {} loops'.format(self.steps))
         print('Time sum: %d ms' %  self.ms(time_sum))
@@ -68,7 +68,11 @@ class Timer(object):
         sorted_tics = sorted(self.tic_dict.items(), \
                 lambda x, y: cmp(x[1], y[1]), reverse=True)
         for name, time in sorted_tics:
-            print('    {}: {}ms, {}%'.format(name, self.ms(time/self.steps), int(time*100/time_sum)))
+            if average:
+                print('[ave] {}: {}ms, {}%'.format(name, self.ms(time/self.steps), int(time*100/time_sum)))
+            else:
+                print('[sum] {}: {}ms, {}%'.format(name, self.ms(time), int(time*100/time_sum)))
+
         if show:
             self.show()
 

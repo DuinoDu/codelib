@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 import scipy.misc
+from PIL import Image
 
 from . import custom
 from .misc import *
@@ -106,6 +107,11 @@ def imshow(img):
     npimg = im_to_numpy(img*255).astype(np.uint8)
     plt.imshow(npimg)
     plt.axis('off')
+
+def imwrite(filename, img):
+    npimg = im_to_numpy(img*255).astype(np.uint8)
+    Image.fromarray(npimg).save(filename)
+
 
 def show_joints(img, pts):
     imshow(img)

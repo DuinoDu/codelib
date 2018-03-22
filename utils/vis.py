@@ -4,11 +4,10 @@
 import time
 
 import numpy as np
-import matplotlib
 import torch as t
 import visdom
 
-matplotlib.use('Agg')
+import matplotlib
 from matplotlib import pyplot as plot
 
 def vis_image(img, ax=None):
@@ -155,7 +154,7 @@ class Visualizer(object):
         self._vis_kw = kwargs
 
         # e.g.（’loss',23） the 23th value of loss
-        self.index = {}
+        self.index = {} 
         self.log_text = ''
 
     def reinit(self, env='default', **kwargs):
@@ -182,14 +181,18 @@ class Visualizer(object):
         """
         self.plot('loss',1.00)
         """
+
         x = self.index.get(name, 0)
-        self.vis.line(Y=np.array([y]), X=np.array([x]),
+        update=None if x == 0 else 'append'
+        self.index[name] = x + 1
+
+        self.vis.line(Y=np.array([y]),
+                      X=np.array([x]),
                       win=name,
+                      update=update,
                       opts=dict(title=name),
-                      update=None if x == 0 else 'append',
                       **kwargs
                       )
-        self.index[name] = x + 1
 
     def img(self, name, img_, **kwargs):
         """
@@ -230,3 +233,4 @@ class Visualizer(object):
         self.log_text = d.get('log_text', '')
         self.index = d.get('index', dict())
         return self
+

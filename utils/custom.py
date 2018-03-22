@@ -207,3 +207,44 @@ Object = """
 	</object>
 """
 
+
+def save(im, anno, index, root):
+    """save one record (im, anno) in voc format.
+
+    Args:
+        im (np.ndarray): image, cv2 image 
+        anno (dict): annotataions 
+        index (int): index
+        root (str): dataset path 
+    """
+    jpegfile = os.path.join(root, 'JPEGImages', '{:0>6}.jpg'.format(index))
+    annofile = os.path.join(root, 'Annotations', '{:0>6}.xml'.format(index))
+    cv2.imwrite(jpegfile, im)
+    height, width = im.shape[:2]
+    filename = '{:0>6}'.format(index)
+
+    objs = ""
+    for key in anno.keys():
+        for bbox in anno[key]:
+            x1 = bbox[0]
+            y1 = bbox[1]
+            x2 = bbox[2]
+            y2 = bbox[3]
+            xmin = min(x1, x2)
+            xmax = max(x1, x2)
+            ymin = min(y1, y2)
+            ymax = max(y1, y2)
+
+            xmin = max(1, xmin+1)
+            xmax = min(width, xmax+1)
+            ymin = max(1, ymin+1) 
+            ymax = min(height, ymax+1)
+            newObj = copy.deepcopy(utils.Object).format(key, xmin, ymin, xmax, ymax)
+            objs += newObj
+    newAnno = copy.deepcopy(utils.Annnotation).format(filename, width, height, objs)
+
+    if os.path.exists(annofile):
+        os.remove(annofile)
+    with open(annofile, 'w') as fid:
+        fid.write(newAnno)
+
